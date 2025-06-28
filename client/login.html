@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ورود مدیر - هلال‌احمر سلماس</title>
+    <style>
+      body {
+        font-family: "Tahoma", sans-serif;
+        background: linear-gradient(to left, #fff, #f9f9f9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+
+      .login-container {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        width: 90%;
+        max-width: 420px;
+        direction: rtl;
+        border-top: 6px solid #e60000;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 1rem;
+      }
+
+      .header h1 {
+        color: #e60000;
+        font-size: 1.5rem;
+        margin: 0;
+      }
+
+      .header p {
+        font-size: 0.9rem;
+        color: #555;
+      }
+
+      form input {
+        width: 100%;
+        padding: 10px;
+        margin: 0.5rem 0;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        background-color: #e60000;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 1rem;
+      }
+
+      button:hover {
+        background-color: #c40000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container">
+      <div class="header">
+        <h1>سامانه نظرسنجی</h1>
+        <p>سازمان جمعیت هلال‌احمر شهرستان سلماس</p>
+      </div>
+      <form id="loginForm">
+        <input name="username" placeholder="نام کاربری" required />
+        <input
+          type="password"
+          name="password"
+          placeholder="رمز عبور"
+          required
+        />
+        <button type="submit">ورود به پنل مدیریت</button>
+      </form>
+    </div>
+
+    <script>
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const username = form.username.value;
+          const password = form.password.value;
+
+          const res = await fetch("http://localhost:3000/api/login", {
+            method: "POST",
+            credentials: "include", // این باید حتما باشه
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            window.location.href = "/index.html";
+          } else {
+            alert(data.message || "ورود ناموفق بود");
+          }
+        });
+    </script>
+  </body>
+</html>

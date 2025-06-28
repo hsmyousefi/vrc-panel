@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>پنل مدیریت هلال احمر سلماس</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background: #c30000;
+        color: white;
+        padding: 1rem;
+        text-align: center;
+      }
+      nav {
+        display: flex;
+        justify-content: center;
+        background: #e0e0e0;
+        padding: 0.5rem;
+      }
+      nav button {
+        margin: 0 0.5rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        background: #fff;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: background 0.3s;
+      }
+      nav button:hover {
+        background: #dcdcdc;
+      }
+      .section {
+        display: none;
+        padding: 1rem;
+        background: white;
+        margin: 1rem auto;
+        max-width: 600px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+      }
+      .active {
+        display: block;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+      }
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.3rem;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        background: #f0f0f0;
+        margin: 0.5rem 0;
+        padding: 0.5rem;
+        border-radius: 5px;
+      }
+      .user-entry {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      .remove-btn {
+        background: crimson;
+        color: white;
+        border: none;
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        cursor: pointer;
+        align-self: flex-end;
+      }
+      canvas {
+        max-width: 150px;
+      }
+
+      .logout-button {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background-color: #e60000;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        transition: background 0.3s ease;
+      }
+      .logout-button:hover {
+        background-color: #c40000;
+      }
+    </style>
+  </head>
+
+  <!-- --------------------------------------------------------------------------------- -->
+  <body>
+    <button id="logoutBtn" class="logout-button">خروج</button>
+
+    <header>
+      <h1>پنل مدیریت هلال احمر سلماس</h1>
+    </header>
+
+    <nav>
+      <button onclick="showSection('users')">تعریف کاربران</button>
+      <button onclick="showSection('comments')">مشاهده نظرات</button>
+      <button onclick="showSection('units')">مدیریت واحدها</button>
+    </nav>
+
+    <section id="users" class="section active">
+      <h2>تعریف کاربر جدید</h2>
+      <label>نام و نام خانوادگی:</label>
+      <input type="text" id="fullName" />
+
+      <label>شماره تماس:</label>
+      <input type="text" id="phoneNumber" />
+
+      <label>نقش کاربر:</label>
+      <select id="role">
+        <option value="">انتخاب کنید</option>
+        <option value="داوطلب">داوطلب</option>
+        <option value="پزشک">پزشک</option>
+        <option value="امدادگر">امدادگر</option>
+      </select>
+
+      <button onclick="addUser()">افزودن کاربر</button>
+      <button onclick="printAllQRCodes()">چاپ همه QRها</button>
+      <ul id="userList"></ul>
+    </section>
+
+    <section id="comments" class="section">
+      <h2>نظرات کاربران</h2>
+      <ul id="commentList"></ul>
+    </section>
+
+    <section id="units" class="section">
+      <h2>مدیریت واحدها</h2>
+      <label>نام واحد:</label>
+      <input type="text" id="unitName" />
+      <button onclick="addUnit()">افزودن واحد</button>
+      <ul id="unitList"></ul>
+    </section>
+
+    <section id="feedbackPage" class="section">
+      <h2>ثبت نظر ارباب رجوع</h2>
+      <p id="feedbackUser">کاربر: ---</p>
+      <label>نظر شما:</label>
+      <textarea id="feedbackText"></textarea>
+      <button onclick="submitFeedback()">ثبت نظر</button>
+      <p id="feedbackStatus"></p>
+    </section>
+
+    <!-- ------------------------------------------------------------------------ -->
+    <script>
+      const apiUrl = "http://localhost:3000/api";
+
+      fetch("http://localhost:3000/api/check-login", {
+        credentials: "include",
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          alert(data);
+          if (!data.loggedIn) {
+            window.location.href = "/login.html";
+          }
+        });
+
+      function showSection(id) {
+        document
+          .querySelectorAll(".section")
+          .forEach((sec) => sec.classList.remove("active"));
+        document.getElementById(id).classList.add("active");
+      }
+
+      // بارگذاری کاربران برای نمایش
+      async function loadUsers() {
+        const res = await fetch(apiUrl + "/users");
+        const users = await res.json();
+
+        const userList = document.getElementById("userList");
+        userList.innerHTML = "";
+
+        users.forEach((user) => {
+          const li = document.createElement("li");
+          li.className = "user-entry";
+
+          const info = document.createElement("div");
+          info.textContent = `${user.name} | ${user.phone} | ${user.role}`;
+
+          const serverIP = "http://192.168.149.195:3000"; // <-- اینجا IP سرور را قرار بده
+          const uniqueLink = `${serverIP}/?feedbackId=${user.id}`;
+
+          const canvas = document.createElement("canvas");
+          new QRious({ element: canvas, value: uniqueLink, size: 150 });
+
+          const link = document.createElement("a");
+          link.href = uniqueLink;
+          link.textContent = "مشاهده فرم نظر";
+          link.target = "_blank";
+          link.style.color = "#0066cc";
+          link.style.textDecoration = "underline";
+
+          li.appendChild(info);
+          li.appendChild(link);
+          li.appendChild(canvas);
+
+          userList.appendChild(li);
+        });
+      }
+
+      // افزودن کاربر جدید
+      async function addUser() {
+        const name = document.getElementById("fullName").value.trim();
+        const phone = document.getElementById("phoneNumber").value.trim();
+        const role = document.getElementById("role").value;
+
+        if (!name || !phone || !role) {
+          alert("لطفاً تمام فیلدها را پر کنید.");
+          return;
+        }
+
+        try {
+          const response = await fetch(apiUrl + "/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, phone, role }),
+          });
+          const result = await response.json();
+
+          if (result.id) {
+            await loadUsers();
+            clearUserForm();
+          }
+        } catch (error) {
+          alert("خطا در ثبت کاربر.");
+          console.error(error);
+        }
+      }
+
+      // پاک کردن فرم تعریف کاربر
+      function clearUserForm() {
+        document.getElementById("fullName").value = "";
+        document.getElementById("phoneNumber").value = "";
+        document.getElementById("role").value = "";
+      }
+
+      // ارسال نظر
+      async function submitFeedback() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get("feedbackId");
+        const comment = document.getElementById("feedbackText").value.trim();
+
+        if (!userId || !comment) {
+          alert("لطفاً نظر خود را وارد کنید.");
+          return;
+        }
+
+        try {
+          const response = await fetch(apiUrl + "/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, comment }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            document.getElementById("feedbackStatus").textContent =
+              "نظر شما با موفقیت ثبت شد.";
+            document.getElementById("feedbackText").value = "";
+          } else {
+            alert("خطا در ثبت نظر.");
+          }
+        } catch (error) {
+          alert("خطا در ثبت نظر.");
+          console.error(error);
+        }
+      }
+
+      // بارگذاری نظرات برای مدیر
+      async function loadComments() {
+        const res = await fetch(apiUrl + "/feedback");
+        const comments = await res.json();
+
+        const commentList = document.getElementById("commentList");
+        commentList.innerHTML = "";
+
+        comments.forEach((c) => {
+          const li = document.createElement("li");
+          li.textContent = `${c.userName} (${new Date(
+            c.created_at
+          ).toLocaleString()}): ${c.comment}`;
+          commentList.appendChild(li);
+        });
+      }
+
+      // مدیریت واحدها به عنوان نمونه (بدون ذخیره در سرور)
+      let units = [];
+      function addUnit() {
+        const unitName = document.getElementById("unitName").value.trim();
+        if (!unitName) {
+          alert("نام واحد را وارد کنید.");
+          return;
+        }
+        units.push(unitName);
+        renderUnits();
+        document.getElementById("unitName").value = "";
+      }
+      function renderUnits() {
+        const unitList = document.getElementById("unitList");
+        unitList.innerHTML = "";
+        units.forEach((unit, i) => {
+          const li = document.createElement("li");
+          li.textContent = unit;
+          unitList.appendChild(li);
+        });
+      }
+
+      // چاپ همه QR کدها
+      function printAllQRCodes() {
+        const canvases = document.querySelectorAll("#userList canvas");
+        if (canvases.length === 0) {
+          alert("ابتدا کاربری را اضافه کنید.");
+          return;
+        }
+        const newWindow = window.open("", "", "width=600,height=600");
+        newWindow.document.write(
+          "<html><head><title>چاپ QR کدها</title></head><body>"
+        );
+        canvases.forEach((canvas) => {
+          newWindow.document.body.appendChild(canvas.cloneNode(true));
+          newWindow.document.body.appendChild(document.createElement("br"));
+        });
+        newWindow.document.write("</body></html>");
+        newWindow.document.close();
+        newWindow.focus();
+        newWindow.print();
+        newWindow.close();
+      }
+
+      // تشخیص صفحه نظر و نمایش فرم نظر در صورت وجود پارامتر
+      window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("feedbackId")) {
+          document
+            .querySelectorAll(".section")
+            .forEach((sec) => sec.classList.remove("active"));
+          document.getElementById("feedbackPage").classList.add("active");
+          // نمایش نام کاربر
+          fetch(apiUrl + "/users")
+            .then((res) => res.json())
+            .then((users) => {
+              const userId = parseInt(urlParams.get("feedbackId"), 10);
+              const user = users.find((u) => u.id === userId);
+              console.log(user);
+              if (user) {
+                document.getElementById(
+                  "feedbackUser"
+                ).textContent = `کاربر: ${user.name}`;
+              }
+            });
+        } else {
+          loadUsers();
+          loadComments();
+        }
+      };
+
+      document
+        .getElementById("logoutBtn")
+        .addEventListener("click", async () => {
+          const res = await fetch("http://localhost:3000/api/logout", {
+            method: "POST",
+            credentials: "include",
+          });
+          const data = await res.json();
+          if (data.success) {
+            // پس از خروج، کاربر به صفحه لاگین برگرده
+            window.location.href = "/login.html";
+          } else {
+            alert("خطا در خروج از حساب");
+          }
+        });
+    </script>
+  </body>
+</html>
